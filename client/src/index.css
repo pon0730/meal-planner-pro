@@ -119,6 +119,30 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 16px;
+  }
+  
+  /* アクセシビリティ: 大きめのフォントサイズ */
+  h1 {
+    @apply text-4xl font-bold;
+  }
+  h2 {
+    @apply text-3xl font-semibold;
+  }
+  h3 {
+    @apply text-2xl font-semibold;
+  }
+  p, li, span, label {
+    @apply text-lg;
+  }
+  
+  /* ボタンやインタラクティブ要素のサイズを大きく */
+  button {
+    @apply min-h-[48px] text-lg;
+  }
+  
+  input, select, textarea {
+    @apply min-h-[48px] text-lg;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
