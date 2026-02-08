@@ -1,46 +1,43 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { ChefHat, RefreshCw, Calendar, ArrowRight } from "lucide-react";
-import { Link, useLocation } from "wouter";
-import { getLoginUrl } from "@/const";
-import { useEffect } from "react";
+import { ChefHat, RefreshCw } from "lucide-react";
+import { useLocation } from "wouter";
+import { skipToken } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-const DAYS_MAP: Record<string, string> = {
-  monday: '月曜日',
-  tuesday: '火曜日',
-  wednesday: '水曜日',
-  thursday: '木曜日',
-  friday: '金曜日',
-  saturday: '土曜日',
-  sunday: '日曜日',
-};
-
-const MEAL_TYPE_MAP: Record<string, string> = {
-  breakfast: '朝食',
-  lunch: '昼食',
-  dinner: '夕食',
-};
+const DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+const MEAL_TYPES = { breakfast: '朝食', lunch: '昼食', dinner: '夕食' };
 
 export default function WeeklyMenu() {
   const { isAuthenticated, loading } = useAuth();
   const [, setLocation] = useLocation();
-  
-  const { data: menu, refetch } = trpc.menu.getLatest.useQuery(undefined, {
-    enabled: isAuthenticated,
-  });
-  
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [alternativeRecipes, setAlternativeRecipes] = useState<any[]>([]);
+
+  const { data: menu, refetch, isLoading } = trpc.menu.getLatest.useQuery();
   const generateMenu = trpc.menu.generate.useMutation();
+  const updateMenuItem = trpc.menu.replaceItem.useMutation();
+  const getRecipesByMealType = trpc.recipes.getByMealType.useQuery(
+    selectedItem ? { mealType: selectedItem.mealType } : skipToken
+  );
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      window.location.href = getLoginUrl();
+      setLocation('/');
     }
-  }, [loading, isAuthenticated]);
+  }, [loading, isAuthenticated, setLocation]);
 
-  if (loading) {
+  useEffect(() => {
+    if (getRecipesByMealType.data) {
+      setAlternativeRecipes(getRecipesByMealType.data);
+    }
+  }, [getRecipesByMealType.data]);
+
+  if (loading || isLoading) {
     return <div className="min-h-screen flex items-center justify-center"><p className="text-xl">読み込み中...</p></div>;
   }
 
@@ -51,7 +48,7 @@ export default function WeeklyMenu() {
   const handleGenerate = async () => {
     try {
       toast.info('献立を生成しています...');
-      await generateMenu.mutateAsync();
+      await generateMenu.mutateAsync({ pattern: 'balanced' });
       refetch();
       toast.success('献立を生成しました！');
     } catch (error) {
@@ -59,118 +56,152 @@ export default function WeeklyMenu() {
     }
   };
 
-  const handleGenerateShoppingList = () => {
-    if (menu) {
-      setLocation('/shopping');
-    } else {
-      toast.error('まず献立を生成してください');
+  const handleChangeRecipe = async (menuItemId: number, newRecipeId: number) => {
+    try {
+      await updateMenuItem.mutateAsync({ menuItemId, newRecipeId });
+      refetch();
+      toast.success('メニューを変更しました');
+      setSelectedItem(null);
+    } catch (error) {
+      toast.error('変更に失敗しました');
     }
   };
 
-  const groupedItems = menu?.items.reduce((acc, item) => {
-    if (!acc[item.dayOfWeek]) {
-      acc[item.dayOfWeek] = {};
-    }
-    acc[item.dayOfWeek][item.mealType] = item;
-    return acc;
-  }, {} as Record<string, Record<string, typeof menu.items[0]>>);
+  const openRecipeSelector = (item: any) => {
+    setSelectedItem(item);
+  };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
-        <div className="container py-4 flex justify-between items-center">
-          <Link href="/dashboard">
-            <div className="flex items-center gap-3 cursor-pointer">
+  if (!menu) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <header className="border-b bg-white">
+          <div className="container py-4 flex justify-between items-center">
+            <div className="flex items-center gap-3">
               <ChefHat className="h-10 w-10 text-primary" />
               <h1 className="text-3xl font-bold text-primary">献立プランナー</h1>
             </div>
-          </Link>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setLocation('/dashboard')}>
-              ダッシュボードへ
+          </div>
+        </header>
+        <div className="container py-20 text-center">
+          <h2 className="text-3xl font-bold mb-4">献立がまだ生成されていません</h2>
+          <Button onClick={handleGenerate} size="lg">
+            献立を生成する
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Group items by day
+  const itemsByDay = DAYS.map((day, idx) => ({
+    day,
+    dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][idx],
+    items: menu.items?.filter((item: any) => item.dayOfWeek === ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][idx]) || [],
+  }));
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <header className="border-b bg-white">
+        <div className="container py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <ChefHat className="h-10 w-10 text-primary" />
+            <h1 className="text-3xl font-bold text-primary">献立プランナー</h1>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleGenerate} variant="outline" size="sm" disabled={generateMenu.isPending}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              再生成
+            </Button>
+            <Button onClick={() => setLocation('/shopping')} size="sm">
+              買い物リストへ
             </Button>
           </div>
         </div>
       </header>
 
       <div className="container py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h2>週間献立</h2>
-          <div className="flex gap-3">
-            <Button onClick={handleGenerate} size="lg" disabled={generateMenu.isPending}>
-              <RefreshCw className={`mr-2 h-5 w-5 ${generateMenu.isPending ? 'animate-spin' : ''}`} />
-              {menu ? '献立を再生成' : '献立を生成'}
-            </Button>
-            {menu && (
-              <Button onClick={handleGenerateShoppingList} size="lg" variant="secondary">
-                <ArrowRight className="mr-2 h-5 w-5" />
-                買い物リストへ
-              </Button>
-            )}
-          </div>
+        <div className="grid gap-4">
+          {itemsByDay.map((dayGroup) => (
+            <Card key={dayGroup.dayOfWeek}>
+              <CardHeader>
+                <CardTitle className="text-2xl">{dayGroup.day}曜日</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {dayGroup.items.length > 0 ? (
+                    dayGroup.items.map((item: any) => (
+                      <div key={item.id} className="p-4 bg-gray-50 rounded-lg flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold text-lg">{MEAL_TYPES[item.mealType as keyof typeof MEAL_TYPES]}</p>
+                          <p className="text-xl">{item.recipe?.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.recipe?.calories}kcal | タンパク質{item.recipe?.protein}g | 脂質{item.recipe?.fat}g | 炭水化物{item.recipe?.carbs}g
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => openRecipeSelector(item)} 
+                            variant="outline" 
+                            size="sm"
+                          >
+                            変更
+                          </Button>
+                          <Button 
+                            onClick={() => setLocation(`/recipe/${item.recipeId}`)} 
+                            variant="outline" 
+                            size="sm"
+                          >
+                            詳細
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">食事が設定されていません</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-
-        {!menu ? (
-          <Card>
-            <CardContent className="py-16 text-center">
-              <Calendar className="h-24 w-24 text-muted-foreground mx-auto mb-6" />
-              <h3 className="text-2xl mb-4">献立がまだありません</h3>
-              <p className="text-lg text-muted-foreground mb-6">
-                「献立を生成」ボタンをクリックして、1週間分の献立を自動生成しましょう
-              </p>
-              <Button onClick={handleGenerate} size="lg" disabled={generateMenu.isPending}>
-                <RefreshCw className={`mr-2 h-5 w-5 ${generateMenu.isPending ? 'animate-spin' : ''}`} />
-                献立を生成
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(DAYS_MAP).map(([dayKey, dayLabel]) => {
-              const dayItems = groupedItems?.[dayKey];
-              if (!dayItems || Object.keys(dayItems).length === 0) return null;
-
-              return (
-                <Card key={dayKey}>
-                  <CardHeader>
-                    <CardTitle className="text-2xl">{dayLabel}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-3 gap-4">
-                      {['breakfast', 'lunch', 'dinner'].map(mealType => {
-                        const item = dayItems[mealType];
-                        if (!item || !item.recipe) return null;
-
-                        return (
-                          <div key={mealType} className="border rounded-lg p-4 hover:border-primary transition-colors">
-                            <div className="flex justify-between items-start mb-3">
-                              <h4 className="text-xl font-semibold">{MEAL_TYPE_MAP[mealType]}</h4>
-                            </div>
-                            <Link href={`/recipe/${item.recipe.id}`}>
-                              <div className="cursor-pointer">
-                                <p className="font-medium text-lg mb-2 text-primary hover:underline">
-                                  {item.recipe.name}
-                                </p>
-                                <div className="text-base text-muted-foreground space-y-1">
-                                  <p>🔥 {item.recipe.calories}kcal</p>
-                                  <p>⏱️ 調理時間: {item.recipe.prepTimeMinutes + item.recipe.cookTimeMinutes}分</p>
-                                  <p>
-                                    P: {item.recipe.protein}g / F: {item.recipe.fat}g / C: {item.recipe.carbs}g
-                                  </p>
-                                </div>
-                              </div>
-                            </Link>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
       </div>
+
+      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>メニューを変更</DialogTitle>
+            <DialogDescription>
+              {selectedItem && `${MEAL_TYPES[selectedItem.mealType as keyof typeof MEAL_TYPES]}の別のメニューを選択してください`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+            {alternativeRecipes.map((recipe) => (
+              <Card 
+                key={recipe.id} 
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => handleChangeRecipe(selectedItem.id, recipe.id)}
+              >
+                <CardHeader>
+                  <CardTitle className="text-lg">{recipe.name}</CardTitle>
+                  <CardDescription>{recipe.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    {recipe.calories}kcal | {(recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0)}分
+                  </p>
+                  <Button 
+                    className="w-full mt-2"
+                    size="sm"
+                    onClick={() => handleChangeRecipe(selectedItem.id, recipe.id)}
+                  >
+                    このメニューに変更
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

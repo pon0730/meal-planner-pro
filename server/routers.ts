@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { RECIPE_PATTERNS } from "./patterns";
 
 export const appRouter = router({
   system: systemRouter,
@@ -145,7 +146,9 @@ export const appRouter = router({
       return { ...menu, items: itemsWithRecipes };
     }),
     
-    generate: protectedProcedure.mutation(async ({ ctx }) => {
+    generate: protectedProcedure
+      .input(z.object({ pattern: z.enum(['balanced', 'quick', 'healthy', 'kids', 'elderly']).optional() }))
+      .mutation(async ({ ctx, input }) => {
       const mealPatterns = await db.getMealPatterns(ctx.user.id);
       const familyMembers = await db.getFamilyMembers(ctx.user.id);
       
@@ -178,7 +181,13 @@ export const appRouter = router({
         weekStartDate: weekStart,
       });
       
+      // 選択されたパターンのレシピを取得
+      const selectedPattern = input?.pattern || 'balanced';
+      const allPatternRecipes = await db.getRecipesByPattern(selectedPattern);
+      
       // 各曜日の各食事に対してレシピを割り当て
+      const usedRecipeIds = new Set<number>();
+      
       for (const pattern of patterns) {
         const mealTypes: Array<'breakfast' | 'lunch' | 'dinner'> = [];
         if (pattern.breakfast) mealTypes.push('breakfast');
@@ -186,7 +195,9 @@ export const appRouter = router({
         if (pattern.dinner) mealTypes.push('dinner');
         
         for (const mealType of mealTypes) {
-          const recipes = await db.getRecipesByMealType(mealType);
+          // パターン内でmealTypeに合致するレシピを取得
+          const patternRecipes = allPatternRecipes.filter(r => r.mealType === mealType);
+          const recipes = patternRecipes.length > 0 ? patternRecipes : await db.getRecipesByMealType(mealType);
           
           // アレルギー対応：材料にアレルギー物質が含まれていないレシピを選択
           const safeRecipes = recipes.filter(recipe => {
@@ -198,8 +209,13 @@ export const appRouter = router({
           
           const availableRecipes = safeRecipes.length > 0 ? safeRecipes : recipes;
           
-          if (availableRecipes.length > 0) {
-            const randomRecipe = availableRecipes[Math.floor(Math.random() * availableRecipes.length)];
+          // 未使用のレシピを優先的に選択
+          const unusedRecipes = availableRecipes.filter(r => !usedRecipeIds.has(r.id));
+          const candidateRecipes = unusedRecipes.length > 0 ? unusedRecipes : availableRecipes;
+          
+          if (candidateRecipes.length > 0) {
+            const randomRecipe = candidateRecipes[Math.floor(Math.random() * candidateRecipes.length)];
+            usedRecipeIds.add(randomRecipe.id);
             await db.createMenuItem({
               weeklyMenuId: menu.id,
               recipeId: randomRecipe.id,
@@ -352,13 +368,7 @@ export const appRouter = router({
 
   patterns: router({
     list: publicProcedure.query(async () => {
-      return [
-        { id: 'balanced', name: 'Balance', description: 'Balanced recipes' },
-        { id: 'quick', name: 'Quick', description: 'Quick recipes' },
-        { id: 'healthy', name: 'Healthy', description: 'Healthy recipes' },
-        { id: 'kids', name: 'Kids', description: 'Kids recipes' },
-        { id: 'elderly', name: 'Elderly', description: 'Elderly recipes' },
-      ];
+      return RECIPE_PATTERNS;
     }),
     getByPattern: publicProcedure
       .input(z.object({ pattern: z.enum(['balanced', 'quick', 'healthy', 'kids', 'elderly']) }))

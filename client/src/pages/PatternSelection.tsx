@@ -14,6 +14,7 @@ export default function PatternSelection() {
   const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
 
   const { data: patterns } = trpc.patterns.list.useQuery();
+  const generateMenu = trpc.menu.generate.useMutation();
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -29,14 +30,21 @@ export default function PatternSelection() {
     return null;
   }
 
-  const handleSelectPattern = (patternId: string) => {
+  const handleSelectPattern = async (patternId: string) => {
     setSelectedPattern(patternId);
-    toast.success(`${patterns?.find(p => p.id === patternId)?.name}を選択しました`);
     
-    // Save pattern selection and navigate to dashboard
-    setTimeout(() => {
-      setLocation('/dashboard');
-    }, 500);
+    try {
+      // Generate menu with selected pattern
+      await generateMenu.mutateAsync({ pattern: patternId as any });
+      toast.success(`${patterns?.find(p => p.id === patternId)?.name}で献立を生成しました`);
+      
+      // Navigate to menu
+      setTimeout(() => {
+        setLocation('/menu');
+      }, 500);
+    } catch (error) {
+      toast.error('献立の生成に失敗しました');
+    }
   };
 
   return (
@@ -76,8 +84,9 @@ export default function PatternSelection() {
                     className="w-full" 
                     size="lg"
                     variant={selectedPattern === pattern.id ? "default" : "outline"}
+                    disabled={generateMenu.isPending}
                   >
-                    {selectedPattern === pattern.id ? '選択済み' : 'このパターンを選ぶ'}
+                    {selectedPattern === pattern.id && generateMenu.isPending ? '生成中...' : 'このパターンを選ぶ'}
                   </Button>
                 </CardContent>
               </Card>
