@@ -86,6 +86,7 @@ export const recipes = mysqlTable("recipes", {
   ingredients: json("ingredients").$type<Array<{name: string, amount: string, unit: string, category: string}>>().notNull(),
   instructions: json("instructions").$type<string[]>().notNull(),
   mealType: mysqlEnum("mealType", ["breakfast", "lunch", "dinner"]).notNull(),
+  pattern: mysqlEnum("pattern", ["balanced", "quick", "healthy", "kids", "elderly"]).notNull().default("balanced"),
   imageUrl: text("imageUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -31,6 +31,24 @@ function createAuthContext(): { ctx: TrpcContext } {
   return { ctx };
 }
 
+describe("Recipe Patterns", () => {
+  it("should list all recipe patterns", async () => {
+    const ctx: TrpcContext = {
+      user: null,
+      req: { protocol: "https", headers: {} } as TrpcContext["req"],
+      res: {} as TrpcContext["res"],
+    };
+    const caller = appRouter.createCaller(ctx);
+    const patterns = await caller.patterns.list();
+
+    expect(patterns).toBeDefined();
+    expect(patterns).toHaveLength(5);
+    expect(patterns[0]).toHaveProperty("id");
+    expect(patterns[0]).toHaveProperty("name");
+    expect(patterns[0]).toHaveProperty("description");
+  });
+});
+
 describe("Menu Generation", () => {
   it.skip("should generate a weekly menu", async () => {
     const { ctx } = createAuthContext();

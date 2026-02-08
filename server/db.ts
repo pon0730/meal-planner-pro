@@ -382,3 +382,22 @@ export async function deleteShoppingListItems(shoppingListId: number): Promise<v
   if (!db) throw new Error("Database not available");
   await db.delete(shoppingListItems).where(eq(shoppingListItems.shoppingListId, shoppingListId));
 }
+
+// Recipe pattern queries
+export async function getRecipesByPattern(pattern: 'balanced' | 'quick' | 'healthy' | 'kids' | 'elderly'): Promise<Recipe[]> {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  return db.select().from(recipes).where(eq(recipes.pattern, pattern));
+}
+
+export async function getRandomRecipesByPattern(pattern: 'balanced' | 'quick' | 'healthy' | 'kids' | 'elderly', limit: number = 7): Promise<Recipe[]> {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  const allRecipes = await db.select().from(recipes).where(eq(recipes.pattern, pattern));
+  
+  // Shuffle and return limited recipes
+  const shuffled = allRecipes.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, limit);
+}

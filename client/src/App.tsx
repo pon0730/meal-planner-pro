@@ -11,6 +11,8 @@ import MealPatterns from "./pages/MealPatterns";
 import WeeklyMenu from "./pages/WeeklyMenu";
 import ShoppingList from "./pages/ShoppingList";
 import RecipeDetail from "./pages/RecipeDetail";
+import PatternSelection from "./pages/PatternSelection";
+import SetupWizard from "./pages/SetupWizard";
 
 function Router() {
   return (
@@ -22,6 +24,8 @@ function Router() {
       <Route path={"/menu"} component={WeeklyMenu} />
       <Route path={"/shopping"} component={ShoppingList} />
       <Route path={"/recipe/:id"} component={RecipeDetail} />
+      <Route path={"/patterns"} component={PatternSelection} />
+      <Route path={"/setup"} component={SetupWizard} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

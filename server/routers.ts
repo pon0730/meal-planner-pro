@@ -349,6 +349,23 @@ export const appRouter = router({
         return await db.updateShoppingListFrequency(input.shoppingListId, input.frequency);
       }),
   }),
+
+  patterns: router({
+    list: publicProcedure.query(async () => {
+      return [
+        { id: 'balanced', name: 'Balance', description: 'Balanced recipes' },
+        { id: 'quick', name: 'Quick', description: 'Quick recipes' },
+        { id: 'healthy', name: 'Healthy', description: 'Healthy recipes' },
+        { id: 'kids', name: 'Kids', description: 'Kids recipes' },
+        { id: 'elderly', name: 'Elderly', description: 'Elderly recipes' },
+      ];
+    }),
+    getByPattern: publicProcedure
+      .input(z.object({ pattern: z.enum(['balanced', 'quick', 'healthy', 'kids', 'elderly']) }))
+      .query(async ({ input }) => {
+        return await db.getRecipesByPattern(input.pattern);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
