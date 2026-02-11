@@ -158,24 +158,16 @@ export default function ShoppingList() {
             {item.amount} {item.unit}
           </p>
           {usage && usage.length > 0 && (
-            <div className="mt-2 text-sm">
-              <p className="text-blue-600 font-medium">使用メニュー:</p>
-              <ul className="list-disc list-inside text-muted-foreground">
-                {usage.map((menuItem: any, idx: number) => (
-                  <li key={idx}>{menuItem.recipe?.name}</li>
-                ))}
-              </ul>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {usage.map((menuItem: any, idx: number) => (
+                <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                  {menuItem.recipe?.name || 'Menu'}
+                </span>
+              ))}
             </div>
           )}
         </div>
-        <Button
-          onClick={() => setSelectedItem(item)}
-          variant="ghost"
-          size="sm"
-          className="flex-shrink-0"
-        >
-          <Info className="h-4 w-4" />
-        </Button>
+
       </div>
     );
   };
