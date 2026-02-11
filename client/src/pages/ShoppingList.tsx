@@ -93,7 +93,7 @@ export default function ShoppingList() {
     }
     acc[item.category].push(item);
     return acc;
-  }, {} as Record<string, typeof shoppingList.items>);
+  }, {} as Record<string, any>);
 
   const itemsByTrip = shoppingList?.items.reduce((acc, item) => {
     if (!acc[item.tripNumber]) {
@@ -101,16 +101,19 @@ export default function ShoppingList() {
     }
     acc[item.tripNumber].push(item);
     return acc;
-  }, {} as Record<number, typeof shoppingList.items>);
+  }, {} as Record<number, any>);
 
   // 食材の用途を取得（ダミー実装 - 実際にはAPIから取得）
   const getItemUsage = (item: any) => {
     // 実装例：menu.items から該当食材を使用しているメニューを検索
-    const usedInMenus = menu?.items?.filter((menuItem: any) => {
-      return menuItem.recipe?.ingredients?.some((ing: any) => 
-        ing.name.toLowerCase().includes(item.ingredientName.toLowerCase())
+    if (!menu?.items) return [];
+    
+    const usedInMenus = menu.items.filter((menuItem: any) => {
+      if (!menuItem.recipe?.ingredients) return false;
+      return menuItem.recipe.ingredients.some((ing: any) => 
+        ing?.name?.toLowerCase?.().includes(item.ingredientName?.toLowerCase?.())
       );
-    }) || [];
+    });
     
     return usedInMenus;
   };
@@ -245,7 +248,7 @@ export default function ShoppingList() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
-                          {items.map(item => renderItemWithUsage(item))}
+                          {items.map((item: any) => renderItemWithUsage(item))}
                         </div>
                       </CardContent>
                     </Card>
@@ -265,7 +268,7 @@ export default function ShoppingList() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {items.map(item => renderItemWithUsage(item))}
+                        {items.map((item: any) => renderItemWithUsage(item))}
                       </div>
                     </CardContent>
                   </Card>
