@@ -19,6 +19,7 @@ export default function WeeklyMenu() {
   const [alternativeRecipes, setAlternativeRecipes] = useState<any[]>([]);
   const [skippedMeals, setSkippedMeals] = useState<number[]>([]);
   const [showSkippedSection, setShowSkippedSection] = useState(false);
+  const [showPatternDialog, setShowPatternDialog] = useState(false);
 
   const { data: menu, refetch, isLoading } = trpc.menu.getLatest.useQuery();
   const generateMenu = trpc.menu.generate.useMutation();
@@ -48,15 +49,20 @@ export default function WeeklyMenu() {
     return null;
   }
 
-  const handleGenerate = async () => {
+  const handleGenerateWithPattern = async (pattern: 'balanced' | 'quick' | 'healthy' | 'kids' | 'elderly') => {
     try {
       toast.info('献立を生成しています...');
-      await generateMenu.mutateAsync({ pattern: 'balanced' });
+      await generateMenu.mutateAsync({ pattern });
       refetch();
       toast.success('献立を生成しました！');
+      setShowPatternDialog(false);
     } catch (error) {
       toast.error('生成に失敗しました');
     }
+  };
+
+  const handleGenerate = () => {
+    setShowPatternDialog(true);
   };
 
   const handleChangeRecipe = async (menuItemId: number, newRecipeId: number) => {
@@ -274,6 +280,55 @@ export default function WeeklyMenu() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pattern Selection Dialog */}
+      <Dialog open={showPatternDialog} onOpenChange={setShowPatternDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>献立パターンを選択</DialogTitle>
+            <DialogDescription>
+              どのタイプの献立を生成しますか？
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3">
+            <button
+              onClick={() => handleGenerateWithPattern('balanced')}
+              className="p-4 text-left border rounded-lg hover:border-primary hover:bg-blue-50 transition-all"
+            >
+              <p className="font-semibold text-lg">バランス型</p>
+              <p className="text-sm text-muted-foreground">栄養バランスを重視した献立</p>
+            </button>
+            <button
+              onClick={() => handleGenerateWithPattern('quick')}
+              className="p-4 text-left border rounded-lg hover:border-primary hover:bg-blue-50 transition-all"
+            >
+              <p className="font-semibold text-lg">時短型</p>
+              <p className="text-sm text-muted-foreground">調理時間が短い献立</p>
+            </button>
+            <button
+              onClick={() => handleGenerateWithPattern('healthy')}
+              className="p-4 text-left border rounded-lg hover:border-primary hover:bg-blue-50 transition-all"
+            >
+              <p className="font-semibold text-lg">健康志向型</p>
+              <p className="text-sm text-muted-foreground">ヘルシーな献立</p>
+            </button>
+            <button
+              onClick={() => handleGenerateWithPattern('kids')}
+              className="p-4 text-left border rounded-lg hover:border-primary hover:bg-blue-50 transition-all"
+            >
+              <p className="font-semibold text-lg">子ども向け</p>
+              <p className="text-sm text-muted-foreground">子どもが好きな献立</p>
+            </button>
+            <button
+              onClick={() => handleGenerateWithPattern('elderly')}
+              className="p-4 text-left border rounded-lg hover:border-primary hover:bg-blue-50 transition-all"
+            >
+              <p className="font-semibold text-lg">高齢者向け</p>
+              <p className="text-sm text-muted-foreground">食べやすい献立</p>
+            </button>
           </div>
         </DialogContent>
       </Dialog>

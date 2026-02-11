@@ -5,11 +5,15 @@ import { trpc } from "@/lib/trpc";
 import { ChefHat, Users, Calendar, ShoppingCart, Settings, TrendingUp, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Dashboard() {
   const { user, isAuthenticated, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showMenuModal, setShowMenuModal] = useState(false);
+  const [showNutritionModal, setShowNutritionModal] = useState(false);
   
   const { data: familyMembers } = trpc.family.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -67,55 +71,11 @@ export default function Dashboard() {
       <div className="container py-8">
         <h2 className="mb-8">ダッシュボード</h2>
 
-        {/* Quick Stats */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl font-medium">家族メンバー</CardTitle>
-              <Users className="h-6 w-6 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{familyMembers?.length || 0}人</div>
-              <p className="text-base text-muted-foreground mt-1">
-                登録済み
-              </p>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl font-medium">今週の献立</CardTitle>
-              <Calendar className="h-6 w-6 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {latestMenu ? `${latestMenu.items.length}食` : '未作成'}
-              </div>
-              <p className="text-base text-muted-foreground mt-1">
-                {latestMenu ? '生成済み' : '献立を作成しましょう'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl font-medium">栄養目標</CardTitle>
-              <TrendingUp className="h-6 w-6 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {nutritionGoal ? `${nutritionGoal.dailyCalories}kcal` : '未設定'}
-              </div>
-              <p className="text-base text-muted-foreground mt-1">
-                1日の目標カロリー
-              </p>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Main Actions */}
         <div className="grid md:grid-cols-2 gap-6">
-          <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setLocation('/menu')}>
+          <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setShowMenuModal(true)}>
             <CardHeader>
               <Calendar className="h-12 w-12 text-primary mb-2" />
               <CardTitle className="text-2xl">献立管理</CardTitle>
@@ -135,7 +95,7 @@ export default function Dashboard() {
             </CardHeader>
           </Card>
 
-          <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setLocation('/family')}>
+          <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setShowMembersModal(true)}>
             <CardHeader>
               <Users className="h-12 w-12 text-primary mb-2" />
               <CardTitle className="text-2xl">家族設定</CardTitle>
@@ -165,6 +125,117 @@ export default function Dashboard() {
             </CardHeader>
           </Card>
         </div>
+
+      {/* Members Modal */}
+      <Dialog open={showMembersModal} onOpenChange={setShowMembersModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>家族メンバー一覧</DialogTitle>
+            <DialogDescription>
+              家族メンバーの情報を確認・編集できます
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {familyMembers && familyMembers.length > 0 ? (
+              familyMembers.map((member) => (
+                <Card key={member.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <CardTitle>{member.name}</CardTitle>
+                        <CardDescription>
+                          {member.age ? `${member.age}歳` : '年齢未設定'}
+                        </CardDescription>
+                      </div>
+                      <Button onClick={() => setLocation(`/family`)}>
+                        編集
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  {(member.allergies && member.allergies.length > 0) || (member.dislikes && member.dislikes.length > 0) ? (
+                    <CardContent>
+                      {member.allergies && member.allergies.length > 0 && (
+                        <p className="text-sm"><strong>アレルギー:</strong> {member.allergies.join(', ')}</p>
+                      )}
+                      {member.dislikes && member.dislikes.length > 0 && (
+                        <p className="text-sm"><strong>苦手な食材:</strong> {member.dislikes.join(', ')}</p>
+                      )}
+                    </CardContent>
+                  ) : null}
+                </Card>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground">メンバーが登録されていません</p>
+            )}
+            <Button className="w-full" onClick={() => setLocation('/family')}>
+              メンバーを追加
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Menu Modal */}
+      <Dialog open={showMenuModal} onOpenChange={setShowMenuModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>今週の献立</DialogTitle>
+            <DialogDescription>
+              献立の詳細を確認・編集できます
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {latestMenu && latestMenu.items.length > 0 ? (
+              <>
+                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                  const dayItems = latestMenu.items.filter((item: any) => item.dayOfWeek === day);
+                  if (dayItems.length === 0) return null;
+                  
+                  const dayNames: Record<string, string> = {
+                    monday: '月曜日',
+                    tuesday: '火曜日',
+                    wednesday: '水曜日',
+                    thursday: '木曜日',
+                    friday: '金曜日',
+                    saturday: '土曜日',
+                    sunday: '日曜日'
+                  };
+                  
+                  return (
+                    <div key={day}>
+                      <h3 className="font-semibold text-lg mb-2">{dayNames[day]}</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {dayItems.map((item: any) => (
+                          <Card key={item.id}>
+                            <CardHeader>
+                              <CardTitle className="text-base">{item.recipe.name}</CardTitle>
+                              <CardDescription>
+                                {item.mealType === 'breakfast' ? '朝食' : item.mealType === 'lunch' ? '昼食' : '夕食'}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-sm text-muted-foreground">{item.recipe.calories}kcal</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                <Button className="w-full" onClick={() => { setShowMenuModal(false); setLocation('/menu'); }}>
+                  献立を編集
+                </Button>
+              </>
+            ) : (
+              <div className="text-center">
+                <p className="text-muted-foreground mb-4">献立が生成されていません</p>
+                <Button onClick={() => { setShowMenuModal(false); setLocation('/menu'); }}>
+                  献立を生成
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   );
