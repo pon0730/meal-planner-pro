@@ -105,17 +105,35 @@ export default function ShoppingList() {
 
   // 食材の用途を取得（ダミー実装 - 実際にはAPIから取得）
   const getItemUsage = (item: any) => {
-    // 実装例：menu.items から該当食材を使用しているメニューを検索
-    if (!menu?.items) return [];
-    
-    const usedInMenus = menu.items.filter((menuItem: any) => {
-      if (!menuItem.recipe?.ingredients) return false;
-      return menuItem.recipe.ingredients.some((ing: any) => 
-        ing?.name?.toLowerCase?.().includes(item.ingredientName?.toLowerCase?.())
-      );
-    });
-    
-    return usedInMenus;
+    try {
+      if (!menu?.items || !Array.isArray(menu.items)) return [];
+      if (!item?.ingredientName) return [];
+      
+      const itemNameLower = String(item.ingredientName).toLowerCase();
+      
+      const usedInMenus = menu.items.filter((menuItem: any) => {
+        try {
+          if (!menuItem?.recipe?.ingredients || !Array.isArray(menuItem.recipe.ingredients)) {
+            return false;
+          }
+          return menuItem.recipe.ingredients.some((ing: any) => {
+            try {
+              const ingName = String(ing?.name || '').toLowerCase();
+              return ingName.includes(itemNameLower);
+            } catch {
+              return false;
+            }
+          });
+        } catch {
+          return false;
+        }
+      });
+      
+      return usedInMenus || [];
+    } catch (error) {
+      console.error('getItemUsage error:', error);
+      return [];
+    }
   };
 
   const renderItemWithUsage = (item: any) => {
