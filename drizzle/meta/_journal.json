@@ -15,6 +15,13 @@
       "when": 1770572098076,
       "tag": "0001_brave_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1770786844786,
+      "tag": "0002_mature_gambit",
+      "breakpoints": true
     }
   ]
 }

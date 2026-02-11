@@ -3,12 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { trpc } from "@/lib/trpc";
 import { ChefHat, Plus, Trash2, Save } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
+const COMMON_ALLERGIES = ['卵', 'エビ', 'カニ', 'くるみ', 'そば', 'ピーナッツ', 'イカ', 'タコ', '牛乳', 'ゴマ', 'キウイ', 'オレンジ'];
+const DIETARY_RESTRICTIONS = ['ベジタリアン', 'ビーガン', 'グルテンフリー', 'ハラール', 'コーシャ'];
 
 export default function FamilySettings() {
   const { isAuthenticated, loading } = useAuth();
@@ -26,7 +30,13 @@ export default function FamilySettings() {
   const deleteMember = trpc.family.delete.useMutation();
   const upsertNutrition = trpc.nutrition.upsert.useMutation();
   
-  const [newMember, setNewMember] = useState({ name: '', age: '', allergies: '', dislikes: '' });
+  const [newMember, setNewMember] = useState({ 
+    name: '', 
+    age: '', 
+    allergies: [] as string[],
+    dislikes: '',
+    dietaryRestrictions: [] as string[],
+  });
   const [nutrition, setNutrition] = useState({
     dailyCalories: 2000,
     proteinGrams: 60,
@@ -60,20 +70,20 @@ export default function FamilySettings() {
   }
 
   const handleAddMember = async () => {
-    if (!newMember.name.trim()) {
+    if (!newMember.name) {
       toast.error('名前を入力してください');
       return;
     }
-    
+
     try {
       await createMember.mutateAsync({
         name: newMember.name,
         age: newMember.age ? parseInt(newMember.age) : undefined,
-        allergies: newMember.allergies ? newMember.allergies.split(',').map(s => s.trim()) : [],
-        dislikes: newMember.dislikes ? newMember.dislikes.split(',').map(s => s.trim()) : [],
+        allergies: newMember.allergies,
+        dislikes: newMember.dislikes ? newMember.dislikes.split(',').map(d => d.trim()) : [],
       });
       
-      setNewMember({ name: '', age: '', allergies: '', dislikes: '' });
+      setNewMember({ name: '', age: '', allergies: [], dislikes: '', dietaryRestrictions: [] });
       refetchFamily();
       toast.success('家族メンバーを追加しました');
     } catch (error) {
@@ -81,11 +91,11 @@ export default function FamilySettings() {
     }
   };
 
-  const handleDeleteMember = async (id: number) => {
+  const handleDeleteMember = async (memberId: number) => {
     try {
-      await deleteMember.mutateAsync({ id });
+      await deleteMember.mutateAsync({ id: memberId });
       refetchFamily();
-      toast.success('家族メンバーを削除しました');
+      toast.success('メンバーを削除しました');
     } catch (error) {
       toast.error('削除に失敗しました');
     }
@@ -101,160 +111,222 @@ export default function FamilySettings() {
     }
   };
 
+  const toggleAllergy = (allergy: string) => {
+    setNewMember(prev => ({
+      ...prev,
+      allergies: prev.allergies.includes(allergy)
+        ? prev.allergies.filter(a => a !== allergy)
+        : [...prev.allergies, allergy]
+    }));
+  };
+
+  const toggleDietaryRestriction = (restriction: string) => {
+    setNewMember(prev => ({
+      ...prev,
+      dietaryRestrictions: prev.dietaryRestrictions.includes(restriction)
+        ? prev.dietaryRestrictions.filter(r => r !== restriction)
+        : [...prev.dietaryRestrictions, restriction]
+    }));
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="border-b bg-white">
         <div className="container py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <ChefHat className="h-10 w-10 text-primary" />
+            <h1 className="text-3xl font-bold text-primary">献立プランナー</h1>
+          </div>
           <Link href="/dashboard">
-            <div className="flex items-center gap-3 cursor-pointer">
-              <ChefHat className="h-10 w-10 text-primary" />
-              <h1 className="text-3xl font-bold text-primary">献立プランナー</h1>
-            </div>
+            <Button variant="outline">ダッシュボードに戻る</Button>
           </Link>
-          <Button variant="outline" onClick={() => setLocation('/dashboard')}>
-            ダッシュボードへ
-          </Button>
         </div>
       </header>
 
-      <div className="container py-8 max-w-4xl">
-        <h2 className="mb-8">家族設定</h2>
-
-        {/* Family Members */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-2xl">家族メンバー</CardTitle>
-            <CardDescription className="text-lg">
-              家族構成、アレルギー、好き嫌いを登録します
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {familyMembers && familyMembers.length > 0 && (
-              <div className="space-y-4">
-                {familyMembers.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-semibold text-xl">{member.name}</p>
-                      {member.age && <p className="text-lg text-muted-foreground">{member.age}歳</p>}
-                      {member.allergies && (member.allergies as string[]).length > 0 && (
-                        <p className="text-lg text-red-600">アレルギー: {(member.allergies as string[]).join(', ')}</p>
-                      )}
-                      {member.dislikes && (member.dislikes as string[]).length > 0 && (
-                        <p className="text-lg text-orange-600">苦手: {(member.dislikes as string[]).join(', ')}</p>
-                      )}
+      <div className="container py-8">
+        <div className="grid gap-8 max-w-4xl mx-auto">
+          {/* 家族メンバー管理 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">家族メンバー管理</CardTitle>
+              <CardDescription>家族構成、アレルギー、食事制限を設定してください</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 既存メンバー一覧 */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">登録済みメンバー</h3>
+                {familyMembers && familyMembers.length > 0 ? (
+                  familyMembers.map(member => (
+                    <div key={member.id} className="p-4 bg-gray-50 rounded-lg flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className="font-semibold text-lg">{member.name}</p>
+                        {member.age && <p className="text-sm text-muted-foreground">年齢: {member.age}歳</p>}
+                        {member.allergies && member.allergies.length > 0 && (
+                          <p className="text-sm text-red-600">アレルギー: {member.allergies.join(', ')}</p>
+                        )}
+                        {member.dislikes && member.dislikes.length > 0 && (
+                          <p className="text-sm text-orange-600">苦手な食材: {member.dislikes.join(', ')}</p>
+                        )}
+                      </div>
+                      <Button 
+                        onClick={() => handleDeleteMember(member.id)} 
+                        variant="destructive" 
+                        size="sm"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        削除
+                      </Button>
                     </div>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDeleteMember(member.id)}
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">メンバーが登録されていません</p>
+                )}
+              </div>
+
+              {/* 新規メンバー追加 */}
+              <div className="border-t pt-6 space-y-4">
+                <h3 className="font-semibold text-lg">新しいメンバーを追加</h3>
+                
+                <div className="grid gap-4">
+                  <div>
+                    <Label htmlFor="name">名前 *</Label>
+                    <Input
+                      id="name"
+                      value={newMember.name}
+                      onChange={e => setNewMember({ ...newMember, name: e.target.value })}
+                      placeholder="例: 太郎"
+                      className="text-lg"
+                    />
                   </div>
-                ))}
-              </div>
-            )}
 
-            <div className="border-t pt-6 space-y-4">
-              <h3 className="text-xl font-semibold">新しいメンバーを追加</h3>
-              <div className="grid gap-4">
-                <div>
-                  <Label htmlFor="name">名前 *</Label>
-                  <Input
-                    id="name"
-                    value={newMember.name}
-                    onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                    placeholder="例: 太郎"
-                  />
+                  <div>
+                    <Label htmlFor="age">年齢（オプション）</Label>
+                    <Input
+                      id="age"
+                      type="number"
+                      value={newMember.age}
+                      onChange={e => setNewMember({ ...newMember, age: e.target.value })}
+                      placeholder="例: 30"
+                      className="text-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-base mb-3 block">アレルギー</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {COMMON_ALLERGIES.map(allergy => (
+                        <div key={allergy} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`allergy-${allergy}`}
+                            checked={newMember.allergies.includes(allergy)}
+                            onCheckedChange={() => toggleAllergy(allergy)}
+                          />
+                          <label htmlFor={`allergy-${allergy}`} className="text-sm cursor-pointer">
+                            {allergy}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="dislikes">苦手な食材（カンマ区切り）</Label>
+                    <Input
+                      id="dislikes"
+                      value={newMember.dislikes}
+                      onChange={e => setNewMember({ ...newMember, dislikes: e.target.value })}
+                      placeholder="例: トマト, ナス, ピーマン"
+                      className="text-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-base mb-3 block">食事制限</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {DIETARY_RESTRICTIONS.map(restriction => (
+                        <div key={restriction} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`restriction-${restriction}`}
+                            checked={newMember.dietaryRestrictions.includes(restriction)}
+                            onCheckedChange={() => toggleDietaryRestriction(restriction)}
+                          />
+                          <label htmlFor={`restriction-${restriction}`} className="text-sm cursor-pointer">
+                            {restriction}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button onClick={handleAddMember} size="lg" className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    メンバーを追加
+                  </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 栄養目標設定 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">栄養目標設定</CardTitle>
+              <CardDescription>1日の栄養目標を設定してください</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="age">年齢</Label>
+                  <Label htmlFor="calories">1日の目標カロリー（kcal）</Label>
                   <Input
-                    id="age"
+                    id="calories"
                     type="number"
-                    value={newMember.age}
-                    onChange={(e) => setNewMember({ ...newMember, age: e.target.value })}
-                    placeholder="例: 35"
+                    value={nutrition.dailyCalories}
+                    onChange={e => setNutrition({ ...nutrition, dailyCalories: parseInt(e.target.value) })}
+                    className="text-lg"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="allergies">アレルギー（カンマ区切り）</Label>
-                  <Input
-                    id="allergies"
-                    value={newMember.allergies}
-                    onChange={(e) => setNewMember({ ...newMember, allergies: e.target.value })}
-                    placeholder="例: 卵, 乳製品"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="dislikes">苦手な食材（カンマ区切り）</Label>
-                  <Input
-                    id="dislikes"
-                    value={newMember.dislikes}
-                    onChange={(e) => setNewMember({ ...newMember, dislikes: e.target.value })}
-                    placeholder="例: セロリ, パクチー"
-                  />
-                </div>
-                <Button onClick={handleAddMember} size="lg" className="w-full">
-                  <Plus className="mr-2 h-5 w-5" />
-                  メンバーを追加
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Nutrition Goals */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">栄養目標</CardTitle>
-            <CardDescription className="text-lg">
-              家族全体の1日あたりの栄養摂取目標を設定します
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="calories">目標カロリー (kcal)</Label>
-              <Input
-                id="calories"
-                type="number"
-                value={nutrition.dailyCalories}
-                onChange={(e) => setNutrition({ ...nutrition, dailyCalories: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="protein">タンパク質 (g)</Label>
-              <Input
-                id="protein"
-                type="number"
-                value={nutrition.proteinGrams}
-                onChange={(e) => setNutrition({ ...nutrition, proteinGrams: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="fat">脂質 (g)</Label>
-              <Input
-                id="fat"
-                type="number"
-                value={nutrition.fatGrams}
-                onChange={(e) => setNutrition({ ...nutrition, fatGrams: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="carbs">炭水化物 (g)</Label>
-              <Input
-                id="carbs"
-                type="number"
-                value={nutrition.carbsGrams}
-                onChange={(e) => setNutrition({ ...nutrition, carbsGrams: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-            <Button onClick={handleSaveNutrition} size="lg" className="w-full">
-              <Save className="mr-2 h-5 w-5" />
-              栄養目標を保存
-            </Button>
-          </CardContent>
-        </Card>
+                <div>
+                  <Label htmlFor="protein">タンパク質（g）</Label>
+                  <Input
+                    id="protein"
+                    type="number"
+                    value={nutrition.proteinGrams}
+                    onChange={e => setNutrition({ ...nutrition, proteinGrams: parseInt(e.target.value) })}
+                    className="text-lg"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="fat">脂質（g）</Label>
+                  <Input
+                    id="fat"
+                    type="number"
+                    value={nutrition.fatGrams}
+                    onChange={e => setNutrition({ ...nutrition, fatGrams: parseInt(e.target.value) })}
+                    className="text-lg"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="carbs">炭水化物（g）</Label>
+                  <Input
+                    id="carbs"
+                    type="number"
+                    value={nutrition.carbsGrams}
+                    onChange={e => setNutrition({ ...nutrition, carbsGrams: parseInt(e.target.value) })}
+                    className="text-lg"
+                  />
+                </div>
+              </div>
+
+              <Button onClick={handleSaveNutrition} size="lg" className="w-full">
+                <Save className="h-4 w-4 mr-2" />
+                栄養目標を保存
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

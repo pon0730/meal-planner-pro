@@ -157,3 +157,54 @@ export const shoppingListItems = mysqlTable("shopping_list_items", {
 
 export type ShoppingListItem = typeof shoppingListItems.$inferSelect;
 export type InsertShoppingListItem = typeof shoppingListItems.$inferInsert;
+
+
+/**
+ * Shopping list item recipes mapping - tracks which recipes use each ingredient
+ */
+export const shoppingListItemRecipes = mysqlTable("shopping_list_item_recipes", {
+  id: int("id").autoincrement().primaryKey(),
+  shoppingListItemId: int("shoppingListItemId").notNull(),
+  recipeId: int("recipeId").notNull(),
+  menuItemId: int("menuItemId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ShoppingListItemRecipe = typeof shoppingListItemRecipes.$inferSelect;
+export type InsertShoppingListItemRecipe = typeof shoppingListItemRecipes.$inferInsert;
+
+/**
+ * Ingredient inventory table - tracks purchased ingredients and their shelf life
+ */
+export const ingredientInventory = mysqlTable("ingredient_inventory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  ingredientName: varchar("ingredientName", { length: 200 }).notNull(),
+  amount: varchar("amount", { length: 50 }).notNull(),
+  unit: varchar("unit", { length: 50 }).notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  shelfLifeDays: int("shelfLifeDays").notNull().default(7),
+  purchaseDate: timestamp("purchaseDate").notNull(),
+  expiryDate: timestamp("expiryDate").notNull(),
+  usedAmount: varchar("usedAmount", { length: 50 }).notNull().default("0"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IngredientInventory = typeof ingredientInventory.$inferSelect;
+export type InsertIngredientInventory = typeof ingredientInventory.$inferInsert;
+
+/**
+ * Ingredient shelf life reference table - stores default shelf life for common ingredients
+ */
+export const ingredientShelfLife = mysqlTable("ingredient_shelf_life", {
+  id: int("id").autoincrement().primaryKey(),
+  ingredientName: varchar("ingredientName", { length: 200 }).notNull().unique(),
+  category: varchar("category", { length: 100 }).notNull(),
+  shelfLifeDays: int("shelfLifeDays").notNull(),
+  storageMethod: varchar("storageMethod", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type IngredientShelfLife = typeof ingredientShelfLife.$inferSelect;
+export type InsertIngredientShelfLife = typeof ingredientShelfLife.$inferInsert;

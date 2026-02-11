@@ -13,6 +13,8 @@ import ShoppingList from "./pages/ShoppingList";
 import RecipeDetail from "./pages/RecipeDetail";
 import PatternSelection from "./pages/PatternSelection";
 import SetupWizard from "./pages/SetupWizard";
+import InventoryManagement from "./pages/InventoryManagement";
+import RecipeRecommendation from "./pages/RecipeRecommendation";
 
 function Router() {
   return (
@@ -26,6 +28,8 @@ function Router() {
       <Route path={"/recipe/:id"} component={RecipeDetail} />
       <Route path={"/patterns"} component={PatternSelection} />
       <Route path={"/setup"} component={SetupWizard} />
+      <Route path={"/inventory"} component={InventoryManagement} />
+      <Route path={"/recommendations"} component={RecipeRecommendation} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

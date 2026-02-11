@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { ChefHat, ShoppingCart, RefreshCw } from "lucide-react";
+import { ChefHat, ShoppingCart, RefreshCw, Info } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useEffect, useState } from "react";
@@ -19,6 +20,7 @@ const FREQUENCY_MAP: Record<string, string> = {
 export default function ShoppingList() {
   const { isAuthenticated, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const [selectedItem, setSelectedItem] = useState<any>(null);
   
   const { data: menu } = trpc.menu.getLatest.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -101,8 +103,64 @@ export default function ShoppingList() {
     return acc;
   }, {} as Record<number, typeof shoppingList.items>);
 
+  // 食材の用途を取得（ダミー実装 - 実際にはAPIから取得）
+  const getItemUsage = (item: any) => {
+    // 実装例：menu.items から該当食材を使用しているメニューを検索
+    const usedInMenus = menu?.items?.filter((menuItem: any) => {
+      return menuItem.recipe?.ingredients?.some((ing: any) => 
+        ing.name.toLowerCase().includes(item.ingredientName.toLowerCase())
+      );
+    }) || [];
+    
+    return usedInMenus;
+  };
+
+  const renderItemWithUsage = (item: any) => {
+    const usage = getItemUsage(item);
+    
+    return (
+      <div key={item.id} className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition">
+        <Checkbox
+          id={`item-${item.id}`}
+          checked={item.checked}
+          onCheckedChange={(checked) => handleToggleItem(item.id, checked as boolean)}
+          className="mt-1"
+        />
+        <div className="flex-1 min-w-0">
+          <label
+            htmlFor={`item-${item.id}`}
+            className={`block text-lg font-medium cursor-pointer ${item.checked ? 'line-through text-muted-foreground' : ''}`}
+          >
+            {item.ingredientName}
+          </label>
+          <p className="text-sm text-muted-foreground">
+            {item.amount} {item.unit}
+          </p>
+          {usage && usage.length > 0 && (
+            <div className="mt-2 text-sm">
+              <p className="text-blue-600 font-medium">使用メニュー:</p>
+              <ul className="list-disc list-inside text-muted-foreground">
+                {usage.map((menuItem: any, idx: number) => (
+                  <li key={idx}>{menuItem.recipe?.name}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        <Button
+          onClick={() => setSelectedItem(item)}
+          variant="ghost"
+          size="sm"
+          className="flex-shrink-0"
+        >
+          <Info className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="border-b bg-white">
         <div className="container py-4 flex justify-between items-center">
           <Link href="/dashboard">
@@ -124,7 +182,7 @@ export default function ShoppingList() {
 
       <div className="container py-8">
         <div className="flex justify-between items-center mb-8">
-          <h2>買い物リスト</h2>
+          <h2 className="text-4xl font-bold">買い物リスト</h2>
         </div>
 
         <Card className="mb-6">
@@ -139,7 +197,7 @@ export default function ShoppingList() {
               <div className="flex-1">
                 <label className="text-lg font-medium mb-2 block">買い物頻度</label>
                 <Select value={frequency} onValueChange={(v: any) => setFrequency(v)}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full text-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -186,28 +244,8 @@ export default function ShoppingList() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-4">
-                          {items.map(item => (
-                            <div key={item.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                              <Checkbox
-                                id={`item-${item.id}`}
-                                checked={item.checked}
-                                onCheckedChange={(checked) => handleToggleItem(item.id, checked as boolean)}
-                              />
-                              <label
-                                htmlFor={`item-${item.id}`}
-                                className={`flex-1 text-lg cursor-pointer ${item.checked ? 'line-through text-muted-foreground' : ''}`}
-                              >
-                                <span className="font-medium">{item.ingredientName}</span>
-                                <span className="ml-2 text-muted-foreground">
-                                  {item.amount} {item.unit}
-                                </span>
-                                <span className="ml-2 text-sm text-muted-foreground">
-                                  ({item.category})
-                                </span>
-                              </label>
-                            </div>
-                          ))}
+                        <div className="space-y-3">
+                          {items.map(item => renderItemWithUsage(item))}
                         </div>
                       </CardContent>
                     </Card>
@@ -226,25 +264,8 @@ export default function ShoppingList() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
-                        {items.map(item => (
-                          <div key={item.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                            <Checkbox
-                              id={`item-${item.id}`}
-                              checked={item.checked}
-                              onCheckedChange={(checked) => handleToggleItem(item.id, checked as boolean)}
-                            />
-                            <label
-                              htmlFor={`item-${item.id}`}
-                              className={`flex-1 text-lg cursor-pointer ${item.checked ? 'line-through text-muted-foreground' : ''}`}
-                            >
-                              <span className="font-medium">{item.ingredientName}</span>
-                              <span className="ml-2 text-muted-foreground">
-                                {item.amount} {item.unit}
-                              </span>
-                            </label>
-                          </div>
-                        ))}
+                      <div className="space-y-3">
+                        {items.map(item => renderItemWithUsage(item))}
                       </div>
                     </CardContent>
                   </Card>
@@ -254,6 +275,37 @@ export default function ShoppingList() {
           </div>
         )}
       </div>
+
+      {/* 食材詳細ダイアログ */}
+      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{selectedItem?.ingredientName}</DialogTitle>
+            <DialogDescription className="text-lg">
+              {selectedItem?.amount} {selectedItem?.unit}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold mb-2">カテゴリ</h4>
+              <p className="text-muted-foreground">{selectedItem?.category}</p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">使用メニュー</h4>
+              <div className="space-y-2">
+                {getItemUsage(selectedItem)?.map((menuItem: any, idx: number) => (
+                  <div key={idx} className="p-2 bg-blue-50 rounded">
+                    <p className="font-medium">{menuItem.recipe?.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {menuItem.dayOfWeek} {menuItem.mealType}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
