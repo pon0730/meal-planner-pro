@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { RECIPE_PATTERNS } from "./patterns";
+import { generateTrendRecipes } from "./llmRecipeGenerator";
 
 export const appRouter = router({
   system: systemRouter,
@@ -126,6 +127,38 @@ export const appRouter = router({
       .input(z.object({ mealType: z.enum(['breakfast', 'lunch', 'dinner']) }))
       .query(async ({ input }) => {
         return await db.getRecipesByMealType(input.mealType);
+      }),    
+    generateTrendRecipes: protectedProcedure
+      .input(z.object({
+        count: z.number().min(1).max(20).optional().default(10),
+        pattern: z.enum(['balanced', 'quick', 'healthy', 'kids', 'elderly']).optional().default('balanced'),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const generatedRecipes = await generateTrendRecipes(input.count, input.pattern);
+          const savedRecipes = await db.createRecipes(
+            generatedRecipes.map(recipe => ({
+              name: recipe.name,
+              description: recipe.description,
+              servings: recipe.servings,
+              prepTimeMinutes: recipe.prepTimeMinutes,
+              cookTimeMinutes: recipe.cookTimeMinutes,
+              calories: recipe.calories,
+              protein: recipe.protein,
+              fat: recipe.fat,
+              carbs: recipe.carbs,
+              ingredients: recipe.ingredients,
+              instructions: recipe.instructions,
+              mealType: recipe.mealType,
+              pattern: recipe.pattern,
+              imageUrl: recipe.imageUrl || null,
+            }))
+          );
+          return { success: true, count: savedRecipes.length, recipes: savedRecipes };
+        } catch (error) {
+          console.error('Error generating trend recipes:', error);
+          throw new Error('レシピ生成に失敗しました');
+        }
       }),
   }),
 
@@ -180,6 +213,24 @@ export const appRouter = router({
         userId: ctx.user.id,
         weekStartDate: weekStart,
       });
+      
+      // 前週の余った食材を取得
+      const previousWeekStart = new Date(weekStart);
+      previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+      const previousWeekMenu = await db.getWeeklyMenuByDate(ctx.user.id, previousWeekStart);
+      const leftoverIngredients = new Set<string>();
+      
+      if (previousWeekMenu) {
+        // 前週で使用された食材を取得
+        const previousMenuItems = await db.getMenuItems(previousWeekMenu.id);
+        for (const item of previousMenuItems) {
+          const recipe = await db.getRecipeById(item.recipeId);
+          if (recipe && recipe.ingredients) {
+            const ingredients = recipe.ingredients as Array<{name: string}>;
+            ingredients.forEach(ing => leftoverIngredients.add(ing.name));
+          }
+        }
+      }
       
       // 選択されたパターンのレシピを取得
       const selectedPattern = input?.pattern || 'balanced';

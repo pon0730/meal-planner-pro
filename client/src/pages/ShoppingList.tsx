@@ -17,6 +17,23 @@ const FREQUENCY_MAP: Record<string, string> = {
   three_times_weekly: '週3回',
 };
 
+// 調味料リスト（買い物リストから除外する）
+const EXCLUDED_INGREDIENTS = [
+  '油',
+  '水',
+  '塩',
+  'サラダ油',
+  'サラダオイル',
+  'コーンスターチ',
+  'オリーブオイル',
+  'ゴマ油',
+];
+
+function isExcludedIngredient(name: string): boolean {
+  const lowerName = name.toLowerCase();
+  return EXCLUDED_INGREDIENTS.some(excluded => lowerName.includes(excluded.toLowerCase()));
+}
+
 export default function ShoppingList() {
   const { isAuthenticated, loading } = useAuth();
   const [, setLocation] = useLocation();
@@ -29,10 +46,16 @@ export default function ShoppingList() {
   const [shoppingListId, setShoppingListId] = useState<number | null>(null);
   const [frequency, setFrequency] = useState<'weekly' | 'twice_weekly' | 'three_times_weekly'>('weekly');
   
-  const { data: shoppingList, refetch } = trpc.shopping.getByMenuId.useQuery(
+  const { data: shoppingListRaw, refetch } = trpc.shopping.getByMenuId.useQuery(
     { weeklyMenuId: menu?.id || 0 },
     { enabled: isAuthenticated && !!menu }
   );
+  
+  // 調味料を除外した買い物リストを作成
+  const shoppingList = shoppingListRaw ? {
+    ...shoppingListRaw,
+    items: shoppingListRaw.items?.filter((item: any) => !isExcludedIngredient(item.ingredient?.name || '')) || []
+  } : null;
   
   const generateList = trpc.shopping.generate.useMutation();
   const toggleItem = trpc.shopping.toggleItem.useMutation();

@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ChefHat, Users, Calendar, ShoppingCart, Settings, TrendingUp } from "lucide-react";
+import { ChefHat, Users, Calendar, ShoppingCart, Settings, TrendingUp, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useEffect } from "react";
@@ -171,6 +171,21 @@ export default function Dashboard() {
             <CardContent>
               <Button size="lg" className="w-full text-lg">
                 設定する
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setLocation('/recipe-generator')}>
+            <CardHeader>
+              <Sparkles className="h-12 w-12 text-primary mb-2" />
+              <CardTitle className="text-2xl">トレンドメニュー生成</CardTitle>
+              <CardDescription className="text-lg">
+                LLMでトレンドメニューを自動生成
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button size="lg" className="w-full text-lg">
+                生成する
               </Button>
             </CardContent>
           </Card>

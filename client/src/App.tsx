@@ -15,6 +15,7 @@ import PatternSelection from "./pages/PatternSelection";
 import SetupWizard from "./pages/SetupWizard";
 import InventoryManagement from "./pages/InventoryManagement";
 import RecipeRecommendation from "./pages/RecipeRecommendation";
+import { RecipeGenerator } from "./pages/RecipeGenerator";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
       <Route path={"/setup"} component={SetupWizard} />
       <Route path={"/inventory"} component={InventoryManagement} />
       <Route path={"/recommendations"} component={RecipeRecommendation} />
+      <Route path={"/recipe-generator"} component={RecipeGenerator} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -14,6 +14,7 @@ import {
   MealPattern,
   recipes,
   Recipe,
+  InsertRecipe,
   weeklyMenus,
   InsertWeeklyMenu,
   WeeklyMenu,
@@ -274,6 +275,14 @@ export async function getWeeklyMenuById(id: number): Promise<WeeklyMenu | undefi
   return menu;
 }
 
+export async function getWeeklyMenuByDate(userId: number, weekStartDate: Date): Promise<WeeklyMenu | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [menu] = await db.select().from(weeklyMenus)
+    .where(and(eq(weeklyMenus.userId, userId), eq(weeklyMenus.weekStartDate, weekStartDate)));
+  return menu;
+}
+
 // Menu Items
 export async function getMenuItems(weeklyMenuId: number): Promise<MenuItem[]> {
   const db = await getDb();
@@ -400,4 +409,33 @@ export async function getRandomRecipesByPattern(pattern: 'balanced' | 'quick' | 
   // Shuffle and return limited recipes
   const shuffled = allRecipes.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, limit);
+}
+
+export async function createRecipe(recipe: InsertRecipe): Promise<Recipe> {
+  const db = await getDb();
+  if (!db) throw new Error('Database connection failed');
+  
+  const result: any = await db.insert(recipes).values(recipe);
+  const insertId = result[0]?.insertId ? Number(result[0].insertId) : NaN;
+  if (isNaN(insertId) || insertId === 0) {
+    throw new Error('Failed to get insert ID');
+  }
+  
+  const [created] = await db.select().from(recipes).where(eq(recipes.id, insertId));
+  if (!created) {
+    throw new Error('Failed to retrieve created recipe');
+  }
+  return created;
+}
+
+export async function createRecipes(recipesToCreate: InsertRecipe[]): Promise<Recipe[]> {
+  const db = await getDb();
+  if (!db) throw new Error('Database connection failed');
+  
+  const createdRecipes: Recipe[] = [];
+  for (const recipe of recipesToCreate) {
+    const created = await createRecipe(recipe);
+    createdRecipes.push(created);
+  }
+  return createdRecipes;
 }
