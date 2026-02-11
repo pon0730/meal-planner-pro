@@ -297,6 +297,33 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return await db.updateMenuItem(input.menuItemId, input.newRecipeId);
       }),
+    
+    saveSkippedMeals: protectedProcedure
+      .input(z.object({
+        weeklyMenuId: z.number(),
+        menuItemIds: z.array(z.number()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // サーバーメモリに一時保存（後でデータベースに保存する）
+        // 現在は、余り食材を計算して返すだけ
+        const menuItems = await db.getMenuItems(input.weeklyMenuId);
+        const skippedItems = menuItems.filter(item => input.menuItemIds.includes(item.id));
+        
+        // 余り食材を計算
+        const leftoverIngredients: any[] = [];
+        for (const item of skippedItems) {
+          const recipe = await db.getRecipeById(item.recipeId);
+          if (recipe && recipe.ingredients) {
+            leftoverIngredients.push(...recipe.ingredients);
+          }
+        }
+        
+        return { 
+          success: true, 
+          skippedCount: skippedItems.length,
+          leftoverIngredients 
+        };
+      }),
   }),
 
   // Shopping Lists

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { ChefHat, RefreshCw } from "lucide-react";
+import { ChefHat, RefreshCw, CheckCircle2, Circle } from "lucide-react";
 import { useLocation } from "wouter";
 import { skipToken } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -17,6 +17,8 @@ export default function WeeklyMenu() {
   const [, setLocation] = useLocation();
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [alternativeRecipes, setAlternativeRecipes] = useState<any[]>([]);
+  const [skippedMeals, setSkippedMeals] = useState<number[]>([]);
+  const [showSkippedSection, setShowSkippedSection] = useState(false);
 
   const { data: menu, refetch, isLoading } = trpc.menu.getLatest.useQuery();
   const generateMenu = trpc.menu.generate.useMutation();
@@ -71,6 +73,34 @@ export default function WeeklyMenu() {
     setSelectedItem(item);
   };
 
+  const toggleSkippedMeal = (menuItemId: number) => {
+    setSkippedMeals(prev => 
+      prev.includes(menuItemId) 
+        ? prev.filter(id => id !== menuItemId)
+        : [...prev, menuItemId]
+    );
+  };
+
+  const saveSkippedMealsMutation = trpc.menu.saveSkippedMeals.useMutation();
+
+  const handleSaveSkippedMeals = async () => {
+    if (skippedMeals.length === 0) {
+      toast.info('作らなかった献立を選択してください');
+      return;
+    }
+    try {
+      await saveSkippedMealsMutation.mutateAsync({ 
+        weeklyMenuId: menu?.id || 0,
+        menuItemIds: skippedMeals 
+      });
+      toast.success(`${skippedMeals.length}個の献立を記録しました`);
+      setShowSkippedSection(false);
+      setSkippedMeals([]);
+    } catch (error) {
+      toast.error('保存に失敗しました');
+    }
+  };
+
   if (!menu) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -119,7 +149,53 @@ export default function WeeklyMenu() {
         </div>
       </header>
 
+
       <div className="container py-8">
+        {/* 作らなかった献立セクション */}
+        <Card className="mb-8 border-orange-200 bg-orange-50">
+          <CardHeader className="cursor-pointer" onClick={() => setShowSkippedSection(!showSkippedSection)}>
+            <CardTitle className="text-lg flex items-center gap-2">
+              {showSkippedSection ? '▼' : '▶'} 前週で作らなかった献立を記録
+            </CardTitle>
+            <CardDescription>
+              この週で実際に作らなかった献立を選択すると、その食材が次週の献立に優先的に反映されます
+            </CardDescription>
+          </CardHeader>
+          {showSkippedSection && (
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                {menu.items?.map((item: any) => (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleSkippedMeal(item.id)}
+                    className="p-3 bg-white rounded-lg border-2 cursor-pointer transition-all"
+                    style={{
+                      borderColor: skippedMeals.includes(item.id) ? '#ea580c' : '#e5e7eb',
+                      backgroundColor: skippedMeals.includes(item.id) ? '#fff7ed' : 'white',
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {skippedMeals.includes(item.id) ? (
+                        <CheckCircle2 className="h-5 w-5 text-orange-600" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-gray-400" />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-semibold">{MEAL_TYPES[item.mealType as keyof typeof MEAL_TYPES]} - {item.recipe?.name}</p>
+                        <p className="text-sm text-muted-foreground">{item.recipe?.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button onClick={handleSaveSkippedMeals} className="w-full bg-orange-600 hover:bg-orange-700" disabled={saveSkippedMealsMutation.isPending}>
+                {skippedMeals.length > 0 ? `${skippedMeals.length}個の献立を記録` : '記録する'}
+              </Button>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* 献立表示セクション */}
         <div className="grid gap-4">
           {itemsByDay.map((dayGroup) => (
             <Card key={dayGroup.dayOfWeek}>
