@@ -23,6 +23,7 @@ export default function WeeklyMenu() {
   const { data: menu, refetch, isLoading } = trpc.menu.getLatest.useQuery();
   const generateMenu = trpc.menu.generate.useMutation();
   const updateMenuItem = trpc.menu.replaceItem.useMutation();
+  const saveSkippedMealsMutation = trpc.menu.saveSkippedMeals.useMutation();
   const getRecipesByMealType = trpc.recipes.getByMealType.useQuery(
     selectedItem ? { mealType: selectedItem.mealType } : skipToken
   );
@@ -80,8 +81,6 @@ export default function WeeklyMenu() {
         : [...prev, menuItemId]
     );
   };
-
-  const saveSkippedMealsMutation = trpc.menu.saveSkippedMeals.useMutation();
 
   const handleSaveSkippedMeals = async () => {
     if (skippedMeals.length === 0) {
