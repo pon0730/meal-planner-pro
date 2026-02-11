@@ -123,11 +123,6 @@ export default function Dashboard() {
                 1週間分の献立を自動生成・編集
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button size="lg" className="w-full text-lg">
-                献立を見る
-              </Button>
-            </CardContent>
           </Card>
 
           <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setLocation('/shopping')}>
@@ -138,11 +133,6 @@ export default function Dashboard() {
                 献立から自動生成された買い物リスト
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button size="lg" className="w-full text-lg">
-                リストを見る
-              </Button>
-            </CardContent>
           </Card>
 
           <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setLocation('/family')}>
@@ -153,11 +143,6 @@ export default function Dashboard() {
                 家族構成・アレルギー・栄養目標の管理
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button size="lg" className="w-full text-lg">
-                設定する
-              </Button>
-            </CardContent>
           </Card>
 
           <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setLocation('/meal-patterns')}>
@@ -168,11 +153,6 @@ export default function Dashboard() {
                 曜日別の食事パターン設定
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button size="lg" className="w-full text-lg">
-                設定する
-              </Button>
-            </CardContent>
           </Card>
 
           <Card className="border-2 hover:border-primary transition-colors cursor-pointer" onClick={() => setLocation('/recipe-generator')}>
@@ -183,11 +163,6 @@ export default function Dashboard() {
                 LLMでトレンドメニューを自動生成
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button size="lg" className="w-full text-lg">
-                生成する
-              </Button>
-            </CardContent>
           </Card>
         </div>
       </div>
